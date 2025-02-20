@@ -1,0 +1,218 @@
+<!DOCTYPE html>  
+<html lang="vi">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>Né Đạn</title>  
+    <style>  
+        body { margin: 0; overflow: hidden; text-align: center; background: black; color: white; }  
+        canvas { display: block; margin: auto; background: #222; }  
+    </style>  
+</head>  
+<body>  
+    <h1>Né đạn</h1>  
+    <p>Survive as long as possible!</p>  
+    <canvas id="gameCanvas"></canvas>  
+    <script>
+	     document.addEventListener("keydown", function(event) {
+            if (event.key === "Escape") {
+                window.location.href = "giaitri.html";
+            }
+        });
+        const canvas = document.getElementById("gameCanvas");  
+        const ctx = canvas.getContext("2d");  
+        canvas.width = 500;  
+        canvas.height = 600;  
+
+        let player = { x: 250, y: 550, radius: 10, color: "white" };  
+        let boss = { x: 250, y: 100, radius: 20, color: "red" };  
+        let bullets = [];  
+        let gameOver = false;  
+        let score = 0;  
+        let keys = {};  
+
+        // Thời gian và trạng thái kĩ năng  
+        let skillActive = false;  
+        let skillType = "";  
+        let skillEndTime = 0;  
+
+        // Số lượng viên đạn "tỏa"  
+        let toaraBulletCount = 20; // Khởi tạo số đạn "tỏa"  
+
+        window.addEventListener("keydown", (e) => keys[e.key] = true);  
+        window.addEventListener("keyup", (e) => keys[e.key] = false);  
+
+        function spawnBullet(type) {  
+            switch(type) {  
+                case "laze":  
+                    bullets.push({ x: Math.random() * canvas.width, y: 0, size: 15, color: "blue", speed: 10, type });  
+                    break;  
+                case "bám":  
+                    let angle = Math.atan2(player.y - boss.y, player.x - boss.x);  
+                    bullets.push({ x: boss.x, y: boss.y, size: 10, color: "green", speed: 6, type, dx: Math.cos(angle) * 6, dy: Math.sin(angle) * 6 });  
+                    break;  
+                case "tỏa":  
+                    for (let i = 0; i < toaraBulletCount; i++) { // Sử dụng số lượng đạn "tỏa" hiện tại  
+                        let angle = (i / toaraBulletCount) * Math.PI * 2;  
+                        bullets.push({ x: boss.x, y: boss.y, size: 7, color: "yellow", speed: 3, type, dx: Math.cos(angle) * 3, dy: Math.sin(angle) * 3 });  
+                    }  
+                    break;  
+                case "nổ":  
+                    bullets.push({ x: boss.x, y: boss.y, size: 12, color: "purple", speed: 4, type, explode: [false, false, false, false] });  
+                    break;  
+                case "khổng lồ":  
+                    bullets.push({ x: boss.x, y: boss.y, size: 90, color: "orange", speed: 2, type });  
+                    break;  
+                case "nảy":  
+                    bullets.push({ x: boss.x, y: boss.y, size: 25, color: "cyan", speed: 4, type, dx: 4, dy: 4 });  
+                    break;  
+            }  
+        }  
+
+        // Tăng số lượng đạn "tỏa" mỗi 2 giây  
+        setInterval(() => {  
+		     if (toaraBulletCount < 50) {  
+                toaraBulletCount++; // Tăng số lượng viên đạn "tỏa" lên 1, nhưng không vượt quá 50  
+            }  
+        }, 1);
+
+        // Chạy những đợt bắn đạn định kỳ  
+        setInterval(() => spawnBullet("laze"), 2000);  
+        setInterval(() => spawnBullet("bám"), 1500);  
+        setInterval(() => spawnBullet("tỏa"), 1000);  
+        setInterval(() => spawnBullet("nổ"), 5000);  
+        setInterval(() => spawnBullet("khổng lồ"), 5000);  
+        setInterval(() => spawnBullet("nảy"), 5000);  
+
+        // Kĩ năng boss  
+        function activateBossSkill() {  
+            if (Math.random() < 0.5) {  
+                // Kỹ năng nổ hóa  
+                skillActive = true;  
+                skillType = "nổ hóa";  
+                skillEndTime = Date.now() + 5000; // Kéo dài 5 giây  
+                let interval = setInterval(() => {  
+                    if (skillActive) {  
+                        spawnBullet("tỏa");  
+                    } else {  
+                        clearInterval(interval);  
+                    }  
+                }, 100); // Bắn đạn tỏa mỗi 0.1 giây  
+            } else {  
+                // Kĩ năng tận thế hoặc truy sát  
+                if (Math.random() < 0.5) {  
+                    // Kĩ năng tận thế  
+                    skillActive = true;  
+                    skillType = "tận thế";  
+                    skillEndTime = Date.now() + 2000; // Kéo dài 2 giây  
+                    let interval = setInterval(() => {  
+                        if (skillActive) {  
+                            spawnBullet("laze");  
+                        } else {  
+                            clearInterval(interval);  
+                        }  
+                    }, 300); // Bắn laze mỗi 0.3 giây  
+                } else {  
+                    // Kĩ năng truy sát  
+                    skillActive = true;  
+                    skillType = "truy sát";  
+                    skillEndTime = Date.now() + 3000; // Kéo dài 3 giây  
+                    let interval = setInterval(() => {  
+                        if (skillActive) {  
+                            spawnBullet("bám");  
+                        } else {  
+                            clearInterval(interval);  
+                        }  
+                    }, 100); // Bắn một viên bám mỗi 1 giây  
+                }  
+            }  
+        }  
+
+        setInterval(() => {  
+            if (!skillActive) {  
+                activateBossSkill();  
+            }  
+        }, 10000); // Kích hoạt kĩ năng ngẫu nhiên mỗi 10 giây  
+
+        function update() {  
+            if (gameOver) return;  
+
+            // Di chuyển người chơi  
+            if (keys["ArrowLeft"] && player.x > 10) player.x -= 4;  
+            if (keys["ArrowRight"] && player.x < canvas.width - 10) player.x += 4;  
+            if (keys["ArrowUp"] && player.y > 10) player.y -= 4;  
+            if (keys["ArrowDown"] && player.y < canvas.height - 10) player.y += 4;  
+
+            // Cập nhật vị trí bullet  
+            bullets.forEach((b, index) => {  
+                if (b.type === "laze") b.y += b.speed;  
+                else if (b.type === "bám" || b.type === "tỏa") { b.x += b.dx; b.y += b.dy; }  
+                else if (b.type === "nổ") {  
+                    b.y += b.speed;  
+                    let explodePoints = [0, canvas.height * 0.33, canvas.height * 0.66, canvas.height];  
+                    explodePoints.forEach((p, i) => {  
+                        if (!b.explode[i] && b.y > p) {  
+                            b.explode[i] = true;  
+                            for (let j = 0; j < 8; j++) {  
+                                let angle = (j / 8) * Math.PI * 2;  
+                                bullets.push({ x: b.x, y: b.y, size: 7, color: "red", speed: 3, type: "tỏa", dx: Math.cos(angle) * 3, dy: Math.sin(angle) * 3 });  
+                            }  
+                        }  
+                    });  
+                } else if (b.type === "khổng lồ") b.y += b.speed;  
+                else if (b.type === "nảy") {  
+                    b.x += b.dx;  
+                    b.y += b.dy;  
+                    if (b.x <= 0 || b.x >= canvas.width) b.dx *= -1;  
+                    if (b.y <= 0 || b.y >= canvas.height) b.dy *= -1;  
+                }  
+
+                // Kiểm tra va chạm  
+                if (Math.hypot(b.x - player.x, b.y - player.y) < b.size / 2 + player.radius) {  
+                    gameOver = true;  
+                    alert("Game Over! Score: " + score);  
+                    location.reload();  
+                }  
+            });  
+
+            // Cập nhật kĩ năng boss  
+            if (skillActive && Date.now() > skillEndTime) {  
+                skillActive = false;  
+                skillType = "";  
+            }  
+            
+            score++;  
+        }  
+
+        function draw() {  
+            ctx.clearRect(0, 0, canvas.width, canvas.height);  
+            ctx.fillStyle = boss.color;  
+            ctx.beginPath();  
+            ctx.arc(boss.x, boss.y, boss.radius, 0, Math.PI * 2);  
+            ctx.fill();  
+
+            ctx.fillStyle = player.color;  
+            ctx.beginPath();  
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);  
+            ctx.fill();  
+
+            bullets.forEach(b => {  
+                ctx.fillStyle = b.color;  
+                ctx.beginPath();  
+                ctx.arc(b.x, b.y, b.size / 2, 0, Math.PI * 2);  
+                ctx.fill();  
+            });  
+
+            ctx.fillStyle = "white";  
+            ctx.fillText("Score: " + score, 10, 20);  
+        }  
+
+        function gameLoop() {  
+            update();  
+            draw();  
+            requestAnimationFrame(gameLoop);  
+        }  
+        gameLoop();  
+    </script>  
+</body>  
+</html>
